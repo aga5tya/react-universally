@@ -17,7 +17,7 @@ class CounterRoute extends Component {
         <h3>Counter</h3>
         <p>
           <em>
-            This is a small demo component that contains state.  It's useful for
+            This is a small demo component that contains state. It's useful for
             testing the hot reloading experience of an asyncComponent.
           </em>
         </p>

@@ -6,26 +6,19 @@ import React, { PropTypes } from 'react';
  * The is the HTML shell for our React Application.
  */
 function HTML(props) {
-  const {
-    htmlAttributes,
-    headerElements,
-    bodyElements,
-    appBodyString,
-  } = props;
+  const { htmlAttributes, headerElements, bodyElements, appBodyString } = props;
 
   return (
     // eslint-disable-next-line jsx-a11y/html-has-lang
-    (
-      <html {...htmlAttributes}>
-        <head>
-          {headerElements}
-        </head>
-        <body>
-          <div id="app" dangerouslySetInnerHTML={{ __html: appBodyString }} />
-          {bodyElements}
-        </body>
-      </html>
-    )
+    <html {...htmlAttributes}>
+      <head>
+        {headerElements}
+      </head>
+      <body>
+        <div id="app" dangerouslySetInnerHTML={{ __html: appBodyString }} />
+        {bodyElements}
+      </body>
+    </html>
   );
 }
 

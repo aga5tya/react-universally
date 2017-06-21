@@ -70,13 +70,13 @@ function AboutRoute() {
       <p>Produced with ❤️ by...</p>
 
       <ul style={{ marginTop: '1rem' }}>
-        {contributors.map(({ name, url }) => (
+        {contributors.map(({ name, url }) =>
           <li key={name}>
             <a href={url} target="_blank" rel="noopener noreferrer">
               {name}
             </a>
-          </li>
-        ))}
+          </li>,
+        )}
       </ul>
     </div>
   );

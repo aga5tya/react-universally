@@ -97,7 +97,9 @@ export default function withServiceWorker(webpackConfig, bundleConfig) {
         // of injecting all of our client scripts into the body.
         // Please see the HtmlWebpackPlugin configuration above for more
         // information on this page.
-        navigateFallbackURL: `${bundleConfig.webPath}${config('serviceWorker.offlinePageFileName')}`,
+        navigateFallbackURL: `${bundleConfig.webPath}${config(
+          'serviceWorker.offlinePageFileName',
+        )}`,
       },
       // According to the Mozilla docs, AppCache is considered deprecated.
       // @see https://mzl.la/1pOZ5wF
@@ -109,36 +111,36 @@ export default function withServiceWorker(webpackConfig, bundleConfig) {
       // Add the polyfill io script as an external if it is enabled.
       externals: (config('polyfillIO.enabled')
         ? [
-          `https://cdn.polyfill.io/v2/polyfill.min.js?features=${config('polyfillIO.features').join(',')}`,
+          `https://cdn.polyfill.io/v2/polyfill.min.js?features=${config(
+              'polyfillIO.features',
+            ).join(',')}`,
         ]
         : [])
         // Add any included public folder assets.
         .concat(
-          config('serviceWorker.includePublicAssets').reduce(
-            (acc, cur) => {
-              const publicAssetPathGlob = path.resolve(
-                appRootDir.get(),
-                config('publicAssetsPath'),
-                cur,
-              );
-              const publicFileWebPaths = acc.concat(
-                // First get all the matching public folder files.
-                globSync(publicAssetPathGlob, { nodir: true })
-                  // Then map them to relative paths against the public folder.
-                  // We need to do this as we need the "web" paths for each one.
-                  .map(publicFile =>
-                    path.relative(
-                      path.resolve(appRootDir.get(), config('publicAssetsPath')),
-                      publicFile,
-                    ))
-                  // Add the leading "/" indicating the file is being hosted
-                  // off the root of the application.
-                  .map(relativePath => `/${relativePath}`),
-              );
-              return publicFileWebPaths;
-            },
-            [],
-          ),
+          config('serviceWorker.includePublicAssets').reduce((acc, cur) => {
+            const publicAssetPathGlob = path.resolve(
+              appRootDir.get(),
+              config('publicAssetsPath'),
+              cur,
+            );
+            const publicFileWebPaths = acc.concat(
+              // First get all the matching public folder files.
+              globSync(publicAssetPathGlob, { nodir: true })
+                // Then map them to relative paths against the public folder.
+                // We need to do this as we need the "web" paths for each one.
+                .map(publicFile =>
+                  path.relative(
+                    path.resolve(appRootDir.get(), config('publicAssetsPath')),
+                    publicFile,
+                  ),
+                )
+                // Add the leading "/" indicating the file is being hosted
+                // off the root of the application.
+                .map(relativePath => `/${relativePath}`),
+            );
+            return publicFileWebPaths;
+          }, []),
         ),
     }),
   );

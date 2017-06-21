@@ -74,7 +74,8 @@ const values = {
   htmlPage: {
     titleTemplate: 'React, Universally - %s',
     defaultTitle: 'React, Universally',
-    description: 'A starter kit giving you the minimum requirements for a production ready universal react application.',
+    description:
+      'A starter kit giving you the minimum requirements for a production ready universal react application.',
   },
 
   // Content Security Policy (CSP)
