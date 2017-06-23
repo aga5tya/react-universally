@@ -30,9 +30,11 @@ app.use(compression());
 // application for it to work correctly.
 if (process.env.BUILD_FLAG_IS_DEV === 'false' && config('serviceWorker.enabled')) {
   app.use(mount(`/${config('serviceWorker.fileName')}`, serviceWorker));
-  app.get(
-    `${config('bundles.client.webPath')}${config('serviceWorker.offlinePageFileName')}`,
-    offlinePage,
+  app.use(
+    mount(
+      `${config('bundles.client.webPath')}${config('serviceWorker.offlinePageFileName')}`,
+      offlinePage,
+    ),
   );
 }
 
