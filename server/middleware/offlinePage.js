@@ -13,10 +13,10 @@ import config from '../../config';
 export default function offlinePageMiddleware(req, res, next) {
   // We should have had a nonce provided to us.  See the server/index.js for
   // more information on what this is.
-  if (typeof res.locals.nonce !== 'string') {
+  if (typeof res.nonce !== 'string') {
     throw new Error('A "nonce" value has not been attached to the response');
   }
-  const nonce = res.locals.nonce;
+  const nonce = res.nonce;
 
   readFile(
     // Path to the offline page.

@@ -11,15 +11,17 @@ import ServerHTML from './ServerHTML';
 import DemoApp from '../../../shared/components/DemoApp';
 
 /**
- * React application middleware, supports server side rendering.
+ * A Koa middleware that is capable of service our React application,
+ * supporting server side rendering of the application.
  */
-export default function reactApplicationMiddleware(request, response) {
+export default async function reactApplicationMiddleware(ctx, next) {
+  const { request, response, res } = ctx;
   // Ensure a nonce has been provided to us.
   // See the server/middleware/security.js for more info.
-  if (typeof response.locals.nonce !== 'string') {
+  if (typeof res.nonce !== 'string') {
     throw new Error('A "nonce" value has not been attached to the response');
   }
-  const nonce = response.locals.nonce;
+  const nonce = res.nonce;
 
   // It's possible to disable SSR, which can be useful in development mode.
   // In this case traditional client side only rendering will occur.
@@ -31,8 +33,9 @@ export default function reactApplicationMiddleware(request, response) {
     // SSR is disabled so we will return an "empty" html page and
     // rely on the client to initialize and render the react application.
     const html = renderToStaticMarkup(<ServerHTML nonce={nonce} />);
-    response.status(200).send(html);
-    return;
+    response.status = 200;
+    response.body = html;
+    await next();
   }
 
   // Create a context for our AsyncComponentProvider.
@@ -53,36 +56,34 @@ export default function reactApplicationMiddleware(request, response) {
 
   // Pass our app into the react-async-component helper so that any async
   // components are resolved for the render.
-  asyncBootstrapper(app).then(() => {
-    const appString = renderToString(app);
+  await asyncBootstrapper(app);
 
-    // Generate the html response.
-    const html = renderToStaticMarkup(
-      <ServerHTML
-        reactAppString={appString}
-        nonce={nonce}
-        helmet={Helmet.rewind()}
-        asyncComponentsState={asyncComponentsContext.getState()}
-      />,
-    );
+  const appString = renderToString(app);
 
-    // Check if the router context contains a redirect, if so we need to set
-    // the specific status and redirect header and end the response.
-    if (reactRouterContext.url) {
-      response.status(302).setHeader('Location', reactRouterContext.url);
-      response.end();
-      return;
-    }
+  // Generate the html response.
+  const html = renderToStaticMarkup(
+    <ServerHTML
+      reactAppString={appString}
+      nonce={nonce}
+      helmet={Helmet.rewind()}
+      asyncComponentsState={asyncComponentsContext.getState()}
+    />,
+  );
 
-    response
-      .status(
-        reactRouterContext.missed
-          ? // If the renderResult contains a "missed" match then we set a 404 code.
-            // Our App component will handle the rendering of an Error404 view.
-            404
-          : // Otherwise everything is all good and we send a 200 OK status.
-            200,
-      )
-      .send(`<!DOCTYPE html>${html}`);
-  });
+  // Check if the router context contains a redirect, if so we need to set
+  // the specific status and redirect header and end the response.
+  if (reactRouterContext.url) {
+    response.status = 302;
+    response.header.location = reactRouterContext.url;
+    await next();
+  }
+
+  response.status = reactRouterContext.missed
+    ? // If the renderResult contains a "missed" match then we set a 404 code.
+      // Our App component will handle the rendering of an Error404 view.
+      404
+    : // Otherwise everything is all good and we send a 200 OK status.
+      200;
+  response.body = `<!DOCTYPE html>${html}`;
+  await next();
 }

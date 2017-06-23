@@ -2,16 +2,21 @@
 
 import { resolve as pathResolve } from 'path';
 import appRootDir from 'app-root-dir';
+import send from 'koa-send';
 import config from '../../config';
 
 // Middleware to server our service worker.
-function serviceWorkerMiddleware(req, res, next) {
-  res.sendFile(
+async function serviceWorkerMiddleware(ctx, next) {
+  await send(
+    ctx,
     pathResolve(
       appRootDir.get(),
       config('bundles.client.outputPath'),
       config('serviceWorker.fileName'),
     ),
+    {
+      root: '/',
+    },
   );
 }
 
