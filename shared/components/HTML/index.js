@@ -1,6 +1,8 @@
 /* eslint-disable react/no-danger */
+/* eslint-disable jsx-a11y/html-has-lang */
 
-import React, { PropTypes } from 'react';
+import React from 'react';
+import PropTypes from 'prop-types';
 
 /**
  * The is the HTML shell for our React Application.
@@ -9,7 +11,6 @@ function HTML(props) {
   const { htmlAttributes, headerElements, bodyElements, appBodyString } = props;
 
   return (
-    // eslint-disable-next-line jsx-a11y/html-has-lang
     <html {...htmlAttributes}>
       <head>
         {headerElements}

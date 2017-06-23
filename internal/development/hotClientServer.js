@@ -4,6 +4,7 @@ import {
   hotMiddleware as createWebpackHotMiddleware,
 } from 'koa-webpack-middleware';
 import ListenerManager from './listenerManager';
+import config from '../../config';
 import { log } from '../utils';
 
 class HotClientServer {
@@ -25,7 +26,7 @@ class HotClientServer {
       quiet: true,
       noInfo: true,
       headers: {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': `http://${config('host')}:${config('port')}`,
       },
       // Ensure that the public path is taken from the compiler webpack config
       // as it will have been created as an absolute path to avoid conflicts
@@ -36,7 +37,7 @@ class HotClientServer {
     app.use(this.webpackDevMiddleware);
     app.use(createWebpackHotMiddleware(compiler));
 
-    const listener = app.listen(port, host);
+    const listener = app.listen(port);
 
     this.listenerManager = new ListenerManager(listener, 'client');
 
