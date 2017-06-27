@@ -19,10 +19,9 @@ export default async function offlinePageMiddleware(ctx, next) {
     throw new Error('A "nonce" value has not been attached to the response');
   }
   const nonce = res.nonce;
-
   try {
     const data = await readFile(
-    // Path to the offline page.
+      // Path to the offline page.
       pathResolve(
         appRootDir.get(),
         config('bundles.client.outputPath'),
@@ -36,7 +35,6 @@ export default async function offlinePageMiddleware(ctx, next) {
     // Send back the page as the response
     response.status = 200;
     response.body = offlinePageWithNonce;
-    await next();
   } catch (err) {
     ctx.status = typeof err.status === 'number' ? err.status : 500; // eslint-disable-line no-param-reassign
     ctx.app.emit('Error returning offline page.', err, ctx);
