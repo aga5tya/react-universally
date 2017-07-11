@@ -9,6 +9,7 @@
 import React, { Children } from 'react';
 import PropTypes from 'prop-types';
 import serialize from 'serialize-javascript';
+import { render, template } from 'rapscallion';
 
 import config from '../../../config';
 import ifElse from '../../../shared/utils/logic/ifElse';
@@ -40,11 +41,12 @@ function scriptTag(jsFilePath) {
 // COMPONENT
 
 function ServerHTML(props) {
-  const { asyncComponentsState, helmet, nonce, reactAppString } = props;
+  const { asyncComponentsState, helmet, nonce, appRenderer } = props;
 
   // Creates an inline script definition that is protected by the nonce.
-  const inlineScript = body =>
-    <script nonce={nonce} type="text/javascript" dangerouslySetInnerHTML={{ __html: body }} />;
+  const inlineScript = body => (
+    <script nonce={nonce} type="text/javascript" dangerouslySetInnerHTML={{ __html: body }} />
+  );
 
   const headerElements = removeNil([
     ...ifElse(helmet)(() => helmet.title.toComponent(), []),
@@ -82,9 +84,7 @@ function ServerHTML(props) {
       process.env.BUILD_FLAG_IS_DEV === 'true' && config('bundles.client.devVendorDLL.enabled'),
     )(() =>
       scriptTag(
-        `${config('bundles.client.webPath')}${config(
-          'bundles.client.devVendorDLL.name',
-        )}.js?t=${Date.now()}`,
+        `${config('bundles.client.webPath')}${config('bundles.client.devVendorDLL.name')}.js?t=${Date.now()}`,
       ),
     ),
     ifElse(clientEntryAssets && clientEntryAssets.js)(() => scriptTag(clientEntryAssets.js)),
@@ -92,14 +92,18 @@ function ServerHTML(props) {
   ]);
 
   return (
-    <HTML
-      htmlAttributes={ifElse(helmet)(() => helmet.htmlAttributes.toComponent(), null)}
-      headerElements={headerElements.map((x, idx) =>
-        <KeyedComponent key={idx}>{x}</KeyedComponent>,
-      )}
-      bodyElements={bodyElements.map((x, idx) => <KeyedComponent key={idx}>{x}</KeyedComponent>)}
-      appBodyString={reactAppString}
-    />
+    // Return a rapscallion template that places in core components.
+    template`
+      <html ${render(ifElse(helmet)(() => helmet.htmlAttributes.toComponent(), null))}>
+        <head>
+          ${render(headerElements.map((x, idx) => <KeyedComponent key={idx}>{x}</KeyedComponent>))}
+        </head>
+        <body>
+          <div id="app">${appRenderer}</div>
+          ${render(bodyElements.map((x, idx) => <KeyedComponent key={idx}>{x}</KeyedComponent>))}
+        </body>
+      </html>
+    `
   );
 }
 
@@ -109,7 +113,7 @@ ServerHTML.propTypes = {
   // eslint-disable-next-line react/forbid-prop-types
   helmet: PropTypes.object,
   nonce: PropTypes.string,
-  reactAppString: PropTypes.string,
+  appRenderer: PropTypes.any,
 };
 
 // EXPORT

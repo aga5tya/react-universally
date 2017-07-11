@@ -1,6 +1,6 @@
 import React from 'react';
 import Helmet from 'react-helmet';
-import { renderToString, renderToStaticMarkup } from 'react-dom/server';
+import { render, template } from 'rapscallion';
 import { StaticRouter } from 'react-router-dom';
 import { AsyncComponentProvider, createAsyncContext } from 'react-async-component';
 import asyncBootstrapper from 'react-async-bootstrapper';
@@ -58,17 +58,15 @@ export default async function reactApplicationMiddleware(ctx, next) {
   // components are resolved for the render.
   await asyncBootstrapper(app);
 
-  const appString = renderToString(app);
+  // render core app with rapscallion
+  const appRenderer = render(app);
 
-  // Generate the html response.
-  const html = renderToStaticMarkup(
-    <ServerHTML
-      reactAppString={appString}
-      nonce={nonce}
-      helmet={Helmet.rewind()}
-      asyncComponentsState={asyncComponentsContext.getState()}
-    />,
-  );
+  // Generate the html response using template from rapscallion.
+  // ServerHtml is a dumb component that forms main HTML template.
+  const responseRenderer = template`
+    <!DOCTYPE html>
+    ${render(<ServerHTML appRenderer={appRenderer} nonce={nonce} helmet={Helmet.rewind()} asyncComponentsState={asyncComponentsContext.getState()} />)}
+    `;
 
   // Check if the router context contains a redirect, if so we need to set
   // the specific status and redirect header and end the response.
@@ -84,6 +82,8 @@ export default async function reactApplicationMiddleware(ctx, next) {
       404
     : // Otherwise everything is all good and we send a 200 OK status.
       200;
-  response.body = `<!DOCTYPE html>${html}`;
+
+  // Passing back as stream to body
+  response.body = responseRenderer.toStream();
   await next();
 }
