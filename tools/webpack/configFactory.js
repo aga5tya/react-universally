@@ -4,13 +4,13 @@ import path from 'path';
 import { sync as globSync } from 'glob';
 import webpack from 'webpack';
 import OfflinePlugin from 'offline-plugin';
-import AssetsPlugin from 'assets-webpack-plugin';
 import nodeExternals from 'webpack-node-externals';
-import ExtractTextPlugin from 'extract-text-webpack-plugin';
+import ExtractCssChunks from 'extract-css-chunks-webpack-plugin'
+import WriteFilePlugin from 'write-file-webpack-plugin'
+import StatsPlugin from 'stats-webpack-plugin'
+
 import HtmlWebpackPlugin from 'html-webpack-plugin';
 import appRootDir from 'app-root-dir';
-import WebpackMd5Hash from 'webpack-md5-hash';
-import CodeSplitPlugin from 'code-split-component/webpack';
 import { removeEmpty, ifElse, merge, happyPackPlugin } from '../utils';
 import config, { clientConfig } from '../../config';
 import type { BuildOptions } from '../types';
@@ -88,7 +88,12 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
           // registered within the following configuration setting.
           { whitelist:
               // We always want the source-map-support excluded.
-              ['source-map-support/register'].concat(
+              ['source-map-support/register',
+                /^require-universal-module/,
+                /^react-universal-component/,
+                /^require-universal-module/,
+                /^webpack-flush-chunks/,
+                /^normalize.css/].concat(
                 // Then exclude any items specified in the config.
                 config.nodeBundlesIncludeNodeModuleFileTypes || [],
               ),
@@ -167,14 +172,14 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
           // Note: as we are using the WebpackMd5Hash plugin, the hashes will
           // only change when the file contents change. This means we can
           // set very aggressive caching strategies on our bundle output.
-          '[name]-[chunkhash].js',
+          '[name].[chunkhash].js',
           // For any other bundle (typically a server/node) bundle we want a
           // determinable output name to allow for easier importing/execution
           // of the bundle by our scripts.
           '[name].js',
         ),
         // The name format for any additional chunks produced for the bundle.
-        chunkFilename: '[name]-[chunkhash].js',
+        chunkFilename: '[name].[chunkhash].js',
         // When in node mode we will output our bundle as a commonjs2 module.
         libraryTarget: ifNode('commonjs2', 'var'),
       },
@@ -199,21 +204,40 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
     },
 
     plugins: removeEmpty([
-      // Required support for code-split-component, which provides us with our
-      // code splitting functionality.
-      //
-      // The code-split-component doesn't work nicely with React Hot Loader,
-      // which we use in our development builds, so we will disable it (which
-      // causes synchronous loading behaviour for the CodeSplit instances).
-      ifProd(() => new CodeSplitPlugin()),
+      ifDev(() => new WriteFilePlugin()),
 
-      // We use this so that our generated [chunkhash]'s are only different if
-      // the content for our respective chunks have changed.  This optimises
-      // our long term browser caching strategy for our client bundle, avoiding
-      // cases where browsers end up having to download all the client chunks
-      // even though 1 or 2 may have only changed.
-      ifClient(() => new WebpackMd5Hash()),
+      ifNode(() => new webpack.optimize.LimitChunkCountPlugin({
+        maxChunks: 1,
+      })),
 
+      ifClient(() => new ExtractCssChunks()),
+      ifClient(() =>
+      // Separate our third-party/vendor modules into a separate chunk, so that
+      // we can load them independently of our app-specific code changes
+      new webpack.optimize.CommonsChunkPlugin({
+        name: 'vendor',
+        filename: '[name].js',
+        chunkFilename: '[name].[chunkhash].js',
+        minChunks(module) {
+          return (
+          module.context &&
+          module.context.indexOf('node_modules') !== -1
+          );
+        },
+      })),
+      ifClient(() => new StatsPlugin('stats.json')),
+      ifDevClient(() => new webpack.optimize.CommonsChunkPlugin({
+        names: ['bootstrap'], // needed to put webpack bootstrap code before chunks
+        filename: '[name].js',
+        chunkFilename: '[name].[chunkhash].js',
+        minChunks: Infinity,
+      })),
+      ifProdClient(() => new webpack.optimize.CommonsChunkPlugin({
+        names: ['bootstrap'], // needed to put webpack bootstrap code before chunks
+        filename: '[name].[chunkhash].js',
+        chunkFilename: '[name].[chunkhash].js',
+        minChunks: Infinity,
+      })),
       // The DefinePlugin is used by webpack to substitute any patterns that it
       // finds within the code with the respective value assigned below.
       //
@@ -246,21 +270,9 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
         'process.env.IS_NODE': JSON.stringify(isNode),
       }),
 
-      // Generates a JSON file containing a map of all the output files for
-      // our webpack bundle.  A necessisty for our server rendering process
-      // as we need to interogate these files in order to know what JS/CSS
-      // we need to inject into our HTML. We only need to know the assets for
-      // our client bundle.
-      ifClient(() =>
-        new AssetsPlugin({
-          filename: config.bundleAssetsFileName,
-          path: path.resolve(appRootDir.get(), bundleConfig.outputPath),
-        }),
-      ),
-
       // We don't want webpack errors to occur during development as it will
       // kill our dev servers.
-      ifDev(() => new webpack.NoErrorsPlugin()),
+      ifDev(() => new webpack.NoEmitOnErrorsPlugin()),
 
       // We need this plugin to enable hot reloading of our client.
       ifDevClient(() => new webpack.HotModuleReplacementPlugin()),
@@ -292,14 +304,6 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
             },
           }),
         ),
-      ),
-
-      // For the production build of the client we need to extract the CSS into
-      // CSS files.
-      ifProdClient(
-        () => new ExtractTextPlugin({
-          filename: '[name]-[chunkhash].css', allChunks: true,
-        }),
       ),
 
       // -----------------------------------------------------------------------
@@ -369,48 +373,15 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
                 // Adding this will give us the path to our components in the
                 // react dev tools.
                 ifDev('transform-react-jsx-source'),
-                // The following plugin supports the code-split-component
-                // instances, taking care of all the heavy boilerplate that we
-                // would have had to do ourselves to get code splitting w/SSR
-                // support working.
-                // @see https://github.com/ctrlplusb/code-split-component
-                //
-                // We only include it in production as this library does not support
-                // React Hot Loader, which we use in development.
-                ifElse(isProd && (isServer || isClient))(
-                  [
-                    'code-split-component/babel',
-                    {
-                      // For our server bundle we will set the mode as being 'server'
-                      // which will ensure that our code split components can be
-                      // resolved synchronously, being much more helpful for
-                      // pre-rendering.
-                      mode: target,
-                    },
-                  ],
-                ),
+                // The following plugin help appy react-universal-component transforms.
+                ifElse(isServer || isClient)('syntax-dynamic-import'),
+                ifElse(isServer || isClient)('universal-import'),
               ].filter(x => x != null),
             },
             buildOptions,
           ),
         }],
       }),
-
-      // HappyPack 'css' instance for development client.
-      ifDevClient(
-        () => happyPackPlugin({
-          name: 'happypack-devclient-css',
-          loaders: [
-            'style-loader',
-            {
-              path: 'css-loader',
-              // Include sourcemaps for dev experience++.
-              query: { sourceMap: true },
-            },
-          ],
-        }),
-      ),
-
       // END: HAPPY PACK PLUGINS
       // -----------------------------------------------------------------------
 
@@ -552,6 +523,9 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
           }),
         ),
       ),
+      // not needed for react-universal component to work (just good practice)
+      ifDevClient(() => new webpack.NamedModulesPlugin()),
+      ifProdClient(() => new webpack.HashedModuleIdsPlugin()),
     ]),
     module: {
       rules: removeEmpty([
@@ -580,23 +554,21 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
             {
               test: /\.css$/,
             },
-            // For development clients we will defer all our css processing to the
-            // happypack plugin named "happypack-devclient-css".
-            // See the respective plugin within the plugins section for full
-            // details on what loader is being implemented.
-            ifDevClient({
-              loaders: ['happypack/loader?id=happypack-devclient-css'],
-            }),
-            // For a production client build we use the ExtractTextPlugin which
+             // For a production client build we use the ExtractTextPlugin which
             // will extract our CSS into CSS files. We don't use happypack here
             // as there are some edge cases where it fails when used within
             // an ExtractTextPlugin instance.
             // Note: The ExtractTextPlugin needs to be registered within the
             // plugins section too.
-            ifProdClient(() => ({
-              loader: ExtractTextPlugin.extract({
-                fallbackLoader: 'style-loader',
-                loader: ['css-loader'],
+            ifClient(() => ({
+              use: ExtractCssChunks.extract({
+                use: {
+                  loader: 'css-loader',
+                  options: {
+                    modules: true,
+                    localIdentName: '[name]__[local]--[hash:base64:5]',
+                  },
+                },
               }),
             })),
             // When targetting the server we use the "/locals" version of the

@@ -4,9 +4,7 @@
 import React from 'react';
 import { render } from 'react-dom';
 import { BrowserRouter } from 'react-router';
-import { CodeSplitProvider, rehydrateState } from 'code-split-component';
 import { Provider as ReduxProvider } from 'react-redux';
-import { rehydrateJobs } from 'react-jobs/ssr';
 import configureStore from '../shared/redux/configureStore';
 import ReactHotLoader from './components/ReactHotLoader';
 import DemoApp from '../shared/components/DemoApp';
@@ -30,23 +28,17 @@ function renderApp(TheApp) {
   // to do as it will ensure that our React checksum for the client will match
   // the content returned by the server.
   // @see https://github.com/ctrlplusb/code-split-component
-  rehydrateState().then((codeSplitState) => {
-    const app = (
-      <ReactHotLoader>
-        <CodeSplitProvider state={codeSplitState}>
-          <ReduxProvider store={store}>
-            <BrowserRouter>
-              <TheApp />
-            </BrowserRouter>
-          </ReduxProvider>
-        </CodeSplitProvider>
-      </ReactHotLoader>
-    );
+  const app = (
+    <ReactHotLoader>
+      <ReduxProvider store={store}>
+        <BrowserRouter>
+          <TheApp />
+        </BrowserRouter>
+      </ReduxProvider>
+    </ReactHotLoader>
+  );
 
-    rehydrateJobs(app).then(({ appWithJobs }) =>
-      render(appWithJobs, container),
-    );
-  });
+  render(app, container);
 }
 
 // The following is needed so that we can support hot reloading our application.

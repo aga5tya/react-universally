@@ -84,7 +84,7 @@ const config = {
 
   // What should we name the json output file that webpack generates
   // containing details of all output files for a bundle?
-  bundleAssetsFileName: 'assets.json',
+  bundleAssetsFileName: 'stats.json',
 
   // Extended configuration for the Content Security Policy (CSP)
   // @see src/server/middleware/security for more info.
@@ -232,13 +232,13 @@ const config = {
         // webpack loaders in order to be processed (e.g. CSS/SASS etc).
         // For these cases you don't want to include them in the Vendor DLL.
         include: [
-          'code-split-component',
           'react',
           'react-dom',
           'react-helmet',
           'react-router',
+          'react-universal-component',
+          'webpack-flush-chunks',
         ],
-
         // The name of the vendor DLL.
         name: '__dev_vendor_dll__',
       },

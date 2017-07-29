@@ -8,10 +8,10 @@
 // within this module in sync with the module used to generate the offline
 // HTML page.
 // @see ./tools/webpack/offlinePage/generate.js
-
 import type { Head } from 'react-helmet';
 import serialize from 'serialize-javascript';
-import { STATE_IDENTIFIER } from 'code-split-component';
+import { flushChunkNames } from 'react-universal-component/server'
+import flushChunks from 'webpack-flush-chunks'
 import getAssetsForClientChunks from './getAssetsForClientChunks';
 import config, { clientConfig } from '../../../../config';
 
@@ -27,8 +27,8 @@ function scriptTag(jsFilePath: string) {
   return `<script type="text/javascript" src="${jsFilePath}"></script>`;
 }
 
-function scriptTags(jsFilePaths : Array<string>) {
-  return jsFilePaths.map(scriptTag).join('\n');
+function scriptTags(jsFilePaths : Array<string>) { 
+  return jsFilePaths.map(scriptTag).join('\n'); 
 }
 
 type Args = {
@@ -41,30 +41,24 @@ type Args = {
 };
 
 export default function generateHTML(args: Args) {
-  const { reactAppString, initialState, nonce, helmet, codeSplitState, jobsState } = args;
-
-  // The chunks that we need to fetch the assets (js/css) for and then include
-  // said assets as script/style tags within our html.
-  const chunksForRender = [
-    // We always manually add the main entry chunk for our client bundle. It
-    // must always be the first item in the collection.
-    'index',
-  ];
-
-  if (codeSplitState) {
-    // We add all the chunks that our CodeSplitProvider tracked as being used
-    // for this render.  This isn't actually required as the rehydrate function
-    // of code-split-component which gets executed in our client bundle will
-    // ensure all our required chunks are loaded, but its a nice optimisation as
-    // it means the browser can start fetching the required files before it's
-    // even finished parsing our client bundle entry script.
-    // Having the assets.json file available to us made implementing this
-    // feature rather arbitrary.
-    codeSplitState.chunks.forEach(chunk => chunksForRender.push(chunk));
-  }
+  const { reactAppString, initialState, nonce, helmet } = args;
 
   // Now we get the assets (js/css) for the chunks.
-  const assetsForRender = getAssetsForClientChunks(chunksForRender);
+  const clientEntryStats = getAssetsForClientChunks();
+
+  const chunkNames = flushChunkNames();
+
+  const {
+  // arrays of file names (not including publicPath):
+  scripts,
+  stylesheets,
+  cssHashRaw,
+  publicPath,
+  } = flushChunks(clientEntryStats, {
+    chunkNames,
+    before: ['bootstrap', 'vendor'],
+    after: ['index'],
+  });
 
   // Creates an inline script definition that is protected by the nonce.
   const inlineScript = body =>
@@ -78,7 +72,7 @@ export default function generateHTML(args: Args) {
         ${helmet ? helmet.title.toString() : ''}
         ${helmet ? helmet.meta.toString() : ''}
         ${helmet ? helmet.link.toString() : ''}
-        ${styleTags(assetsForRender.css)}
+        ${stylesheets ? styleTags(stylesheets.map(asset => `${publicPath}/${asset}`)) : ''}
         ${helmet ? helmet.style.toString() : ''}
       </head>
       <body>
@@ -97,15 +91,8 @@ export default function generateHTML(args: Args) {
             : ''
         }
         ${
-          // Bind our code split state so that the client knows which server
-          // rendered modules need to be rehydrated.
-          codeSplitState
-            ? inlineScript(`window.${STATE_IDENTIFIER}=${serialize(codeSplitState)};`)
-            : ''
-        }
-        ${
-          jobsState
-            ? inlineScript(`window.${jobsState.STATE_IDENTIFIER}=${serialize(jobsState.state)};`)
+          cssHashRaw
+            ? inlineScript(`window.__CSS_CHUNKS__=${serialize(cssHashRaw)};`)
             : ''
         }
         ${
@@ -126,7 +113,7 @@ export default function generateHTML(args: Args) {
             ? scriptTag(`${config.bundles.client.webPath}${config.bundles.client.devVendorDLL.name}.js?t=${Date.now()}`)
             : ''
         }
-        ${scriptTags(assetsForRender.js)}
+        ${scripts && scriptTags(scripts.map(asset => `${publicPath}/${asset}`))}
         ${helmet ? helmet.script.toString() : ''}
       </body>
     </html>`;

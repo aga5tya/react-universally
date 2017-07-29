@@ -1,3 +1,8 @@
 /* @flow */
+import React from 'react'; // eslint-disable-line
+import universal from 'react-universal-component';
 
-export { default } from './Home';
+
+const Home = universal(import('./Home'), { minDelay: 500 });
+
+export default Home;

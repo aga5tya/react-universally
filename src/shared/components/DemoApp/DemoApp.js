@@ -3,12 +3,15 @@
 import React from 'react';
 import { Match, Miss } from 'react-router';
 import Helmet from 'react-helmet';
-import { CodeSplit } from 'code-split-component';
 import 'normalize.css/normalize.css';
 import './globals.css';
 import Error404 from './Error404';
 import Header from './Header';
 import { safeConfigGet } from '../../utils/config';
+
+import Home from './Home'
+import About from './About'
+import Posts from './Posts'
 
 function DemoApp() {
   return (
@@ -31,31 +34,18 @@ function DemoApp() {
       <Match
         exactly
         pattern="/"
-        render={routerProps =>
-          <CodeSplit chunkName="home" modules={{ Home: require('./Home') }}>
-            { ({ Home }) => Home && <Home {...routerProps} /> }
-          </CodeSplit>
-        }
+        render={routerProps => <Home {...routerProps} />}
       />
 
       <Match
         pattern="/posts"
-        render={routerProps =>
-          <CodeSplit chunkName="posts" modules={{ Posts: require('./Posts') }}>
-            { ({ Posts }) => Posts && <Posts {...routerProps} /> }
-          </CodeSplit>
-        }
+        render={routerProps => <Posts {...routerProps} />}
       />
 
       <Match
         pattern="/about"
-        render={routerProps =>
-          <CodeSplit chunkName="about" modules={{ About: require('./About') }}>
-            { ({ About }) => About && <About {...routerProps} /> }
-          </CodeSplit>
-        }
+        render={routerProps => <About {...routerProps} />}
       />
-
       <Miss component={Error404} />
     </div>
   );
