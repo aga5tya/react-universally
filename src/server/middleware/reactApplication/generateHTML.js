@@ -52,13 +52,9 @@ export default function generateHTML(args: Args) {
   // arrays of file names (not including publicPath):
   scripts,
   stylesheets,
-  cssHashRaw,
+  cssHash,
   publicPath,
-  } = flushChunks(clientEntryStats, {
-    chunkNames,
-    before: ['bootstrap', 'vendor'],
-    after: ['index'],
-  });
+  } = flushChunks(clientEntryStats, { chunkNames, after: ['index'] });
 
   // Creates an inline script definition that is protected by the nonce.
   const inlineScript = body =>
@@ -90,11 +86,7 @@ export default function generateHTML(args: Args) {
             ? inlineScript(`window.__APP_STATE__=${serialize(initialState)};`)
             : ''
         }
-        ${
-          cssHashRaw
-            ? inlineScript(`window.__CSS_CHUNKS__=${serialize(cssHashRaw)};`)
-            : ''
-        }
+        ${cssHash}
         ${
           // Enable the polyfill io script?
           // This can't be configured within a react-helmet component as we
