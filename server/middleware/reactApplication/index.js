@@ -5,6 +5,8 @@ import { StaticRouter } from 'react-router-dom';
 import { AsyncComponentProvider, createAsyncContext } from 'react-async-component';
 import asyncBootstrapper from 'react-async-bootstrapper';
 
+import sprite from 'svg-sprite-loader/runtime/sprite.build';
+
 import config from '../../../config';
 
 import ServerHTML from './ServerHTML';
@@ -58,6 +60,9 @@ export default async function reactApplicationMiddleware(ctx, next) {
   // components are resolved for the render.
   await asyncBootstrapper(app);
 
+  // Get the svg sprites that would have rendered by server
+  const svgSpriteString = sprite.symbols.map(s => s.toString()).join('\n');
+
   const appString = renderToString(app);
 
   // Generate the html response.
@@ -67,6 +72,7 @@ export default async function reactApplicationMiddleware(ctx, next) {
       nonce={nonce}
       helmet={Helmet.rewind()}
       asyncComponentsState={asyncComponentsContext.getState()}
+      svgSpriteString={svgSpriteString}
     />,
   );
 

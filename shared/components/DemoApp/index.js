@@ -16,6 +16,9 @@ import AsyncHomeRoute from './AsyncHomeRoute';
 import AsyncCounterRoute from './AsyncCounterRoute';
 import AsyncAboutRoute from './AsyncAboutRoute';
 
+import Icon from './Icon';
+import TestIcon from '../../icons/test-icon.svg';
+
 function DemoApp() {
   return (
     <div style={{ padding: '2rem' }}>
@@ -113,6 +116,9 @@ function DemoApp() {
       </Helmet>
       <Header />
       <div style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
+        <div style={{ height: '20px', width: '20px' }}>
+          <Icon glyph={TestIcon} />
+        </div>
         <Switch>
           <Route exact path="/" component={AsyncHomeRoute} />
           <Route path="/counter" component={AsyncCounterRoute} />

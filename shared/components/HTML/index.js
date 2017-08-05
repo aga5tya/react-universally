@@ -8,7 +8,7 @@ import PropTypes from 'prop-types';
  * The is the HTML shell for our React Application.
  */
 function HTML(props) {
-  const { htmlAttributes, headerElements, bodyElements, appBodyString } = props;
+  const { htmlAttributes, headerElements, bodyElements, appBodyString, svgSpriteString } = props;
 
   return (
     <html {...htmlAttributes}>
@@ -16,6 +16,12 @@ function HTML(props) {
         {headerElements}
       </head>
       <body>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          xmlnsXlink="http://www.w3.org/1999/xlink"
+          style={{ position: 'absolute', width: 0, height: 0 }}
+          dangerouslySetInnerHTML={{ __html: svgSpriteString }}
+        />
         <div id="app" dangerouslySetInnerHTML={{ __html: appBodyString }} />
         {bodyElements}
       </body>
