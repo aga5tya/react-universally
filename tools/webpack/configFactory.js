@@ -1,10 +1,10 @@
 /* @flow */
 
 import path from 'path';
+import fs from 'fs';
 import { sync as globSync } from 'glob';
 import webpack from 'webpack';
 import OfflinePlugin from 'offline-plugin';
-import nodeExternals from 'webpack-node-externals';
 import ExtractCssChunks from 'extract-css-chunks-webpack-plugin'
 import WriteFilePlugin from 'write-file-webpack-plugin'
 import StatsPlugin from 'stats-webpack-plugin'
@@ -81,24 +81,17 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
     // an  externals config that will ignore all node_modules.
     externals: removeEmpty([
       ifNode(
-        () => nodeExternals(
-          // Some of our node_modules may contain files that depend on webpack
-          // loaders, e.g. CSS or SASS.
-          // For these cases please make sure that the file extensions are
-          // registered within the following configuration setting.
-          { whitelist:
-              // We always want the source-map-support excluded.
-              ['source-map-support/register',
-                /^require-universal-module/,
-                /^react-universal-component/,
-                /^require-universal-module/,
-                /^webpack-flush-chunks/,
-                /^normalize.css/].concat(
-                // Then exclude any items specified in the config.
-                config.nodeBundlesIncludeNodeModuleFileTypes || [],
-              ),
-          },
-        ),
+        () => fs
+            .readdirSync(path.resolve(__dirname, '../../node_modules'))
+            .filter(
+              x =>
+                !/\.bin|react-universal-component|webpack-flush-chunks|^normalize.css/.test(
+                  x,
+                ),
+            ).reduce((externals, mod) => {
+              externals[mod] = `commonjs ${mod}` // eslint-disable-line
+              return externals;
+            }, {}),
       ),
     ]),
 
