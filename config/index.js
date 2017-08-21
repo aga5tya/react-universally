@@ -236,8 +236,6 @@ const config = {
           'react-dom',
           'react-helmet',
           'react-router',
-          'react-universal-component',
-          'webpack-flush-chunks',
         ],
         // The name of the vendor DLL.
         name: '__dev_vendor_dll__',
