@@ -79,7 +79,7 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
     // native node module system.
     // Therefore we use the `webpack-node-externals` library to help us generate
     // an  externals config that will ignore all node_modules.
-    externals: removeEmpty([
+    externals:
       ifNode(
         () => fs
             .readdirSync(path.resolve(__dirname, '../../node_modules'))
@@ -93,7 +93,6 @@ export default function webpackConfigFactory(buildOptions: BuildOptions) {
               return externals;
             }, {}),
       ),
-    ]),
 
     // Source map settings.
     devtool: ifElse(
