@@ -1,19 +1,23 @@
 /* @flow */
 
 import React from 'react';
-import { Match, Miss } from 'react-router';
 import Helmet from 'react-helmet';
+import { connect } from 'react-redux';
 import 'normalize.css/normalize.css';
 import './globals.css';
 import Error404 from './Error404';
 import Header from './Header';
 import { safeConfigGet } from '../../utils/config';
 
-import Home from './Home'
-import About from './About'
-import Posts from './Posts'
+import Home from './Home';
+import About from './About';
+import Posts from './Posts';
 
-function DemoApp() {
+const ComponentsMap = { Home, About, Posts }
+
+function DemoApp(props) {
+  console.log(props.page);
+  const CoreComponent = ComponentsMap[props.page] || Error404
   return (
     <div style={{ padding: '10px' }}>
       {/*
@@ -31,24 +35,12 @@ function DemoApp() {
 
       <Header />
 
-      <Match
-        exactly
-        pattern="/"
-        render={routerProps => <Home {...routerProps} />}
-      />
-
-      <Match
-        pattern="/posts"
-        render={routerProps => <Posts {...routerProps} />}
-      />
-
-      <Match
-        pattern="/about"
-        render={routerProps => <About {...routerProps} />}
-      />
-      <Miss component={Error404} />
+      <CoreComponent />
     </div>
   );
 }
 
-export default DemoApp;
+
+export default connect((state)=> ({
+  page: state.page
+}))(DemoApp);

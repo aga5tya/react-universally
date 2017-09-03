@@ -2,20 +2,20 @@
 
 import type { $Request, $Response, Middleware } from 'express';
 import React from 'react';
+import createHistory from 'history/createMemoryHistory'
 import { renderToString } from 'react-dom/server';
-import { ServerRouter, createServerRenderContext } from 'react-router';
 import { Provider } from 'react-redux';
 import Helmet from 'react-helmet';
 import generateHTML from './generateHTML';
 import DemoApp from '../../../shared/components/DemoApp';
-import configureStore from '../../../shared/redux/configureStore';
+import { configureSSRStore } from '../../../shared/redux/configureStore';
 import config from '../../../../config';
 
 /**
  * An express middleware that is capabable of service our React application,
  * supporting server side rendering of the application.
  */
-function reactApplicationMiddleware(request: $Request, response: $Response) {
+async function reactApplicationMiddleware(request: $Request, response: $Response) {
   // We should have had a nonce provided to us.  See the server/index.js for
   // more information on what this is.
   if (typeof response.locals.nonce !== 'string') {
@@ -63,22 +63,22 @@ function reactApplicationMiddleware(request: $Request, response: $Response) {
     },
   };
 
-  // Create the redux store.
-  const store = configureStore(initialReduxState);
-  const { getState } = store;
+  const history = createHistory({ initialEntries: [request.url] })
 
-  // First create a context for <ServerRouter>, which will allow us to
-  // query for the results of the render.
-  const reactRouterContext = createServerRenderContext();
+  // Create the redux store.
+  const store = await configureSSRStore(response, history, initialReduxState)
+  if (!store) {
+    return // when no store, redirect was already served.
+  }
+
+  const { getState } = store;
 
   
   // Define our app to be server rendered.
   const app = (
-    <ServerRouter location={request.url} context={reactRouterContext}>
       <Provider store={store}>
         <DemoApp />
       </Provider>
-    </ServerRouter>
   );
 
   const reactAppString = renderToString(app);
@@ -99,27 +99,7 @@ function reactApplicationMiddleware(request: $Request, response: $Response) {
     initialState: getState(),
   });
 
-  // Get the render result from the server render context.
-  const renderResult = reactRouterContext.getResult();
-
-  // Check if the render result contains a redirect, if so we need to set
-  // the specific status and redirect header and end the response.
-  if (renderResult.redirect) {
-    response.status(301).setHeader('Location', renderResult.redirect.pathname);
-    response.end();
-    return;
-  }
-
-  response
-    .status(
-      renderResult.missed
-        // If the renderResult contains a "missed" match then we set a 404 code.
-        // Our App component will handle the rendering of an Error404 view.
-        ? 404
-        // Otherwise everything is all good and we send a 200 OK status.
-        : 200,
-    )
-    .send(html);
+  response.send(html);
 }
 
 export default (reactApplicationMiddleware : Middleware);

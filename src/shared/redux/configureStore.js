@@ -1,20 +1,32 @@
 /* @flow */
 
 import { createStore, applyMiddleware, compose } from 'redux';
-import thunk from 'redux-thunk';
+import reduxThunk from 'redux-thunk';
 import axios from 'axios';
-import reducer from '../reducers';
+import reducers from '../reducers';
 import type { State } from '../reducers';
+import routesMap from './routesMap'
+import { combineReducers } from 'redux';
+import { connectRoutes, NOT_FOUND } from 'redux-first-router'
 
-function configureStore(initialState: ?State) {
+function configureStore(history, initialState: ?State) {
+
+  const { reducer, middleware, enhancer, thunk } = connectRoutes(
+    history,
+    routesMap,
+    {}
+  )
+
   const enhancers = compose(
+    enhancer,
     // Middleware store enhancer.
     applyMiddleware(
       // Initialising redux-thunk with extra arguments will pass the below
       // arguments to all the redux-thunk actions. Below we are passing a
       // preconfigured axios instance which can be used to fetch data with.
       // @see https://github.com/gaearon/redux-thunk
-      thunk.withExtraArgument({ axios }),
+      reduxThunk.withExtraArgument({ axios }),
+      middleware
     ),
     // Redux Dev Tools store enhancer.
     // @see https://github.com/zalmoxisus/redux-devtools-extension
@@ -29,41 +41,56 @@ function configureStore(initialState: ?State) {
       : f => f,
   );
 
+  const rootReducer = combineReducers({ ...reducers, location: reducer })
+
   const store = initialState
-    ? createStore(reducer, initialState, enhancers)
-    : createStore(reducer, enhancers);
+    ? createStore(rootReducer, initialState, enhancers)
+    : createStore(rootReducer, enhancers);
 
   if (process.env.NODE_ENV === 'development' && module.hot) {
     // Enable Webpack hot module replacement for reducers. This is so that we
     // don't lose all of our current application state during hot reloading.
     module.hot.accept('../reducers', () => {
-      const nextRootReducer = require('../reducers').default; // eslint-disable-line global-require
-
-      store.replaceReducer(nextRootReducer);
+      const reducers = require('../reducers').default;
+      const rootReducer = combineReducers({ ...reducers, location: reducer })
+      store.replaceReducer(rootReducer)
     });
   }
 
-  return store;
+  return { store, thunk };
 }
 
-// NOTE: If we create an '/api' endpoint in our application then we will neeed to
-// configure the axios instances so that they will resolve to the proper URL
-// endpoints on the server. We have to provide absolute URLs for any of our
-// server bundles. To do so we can set the default 'baseURL' for axios. Any
-// relative path requests will then be appended to the 'baseURL' in order to
-// form an absolute URL.
-// We don't need to worry about this for client side executions, relative paths
-// will work fine there.
-// Example:
-//
-// const axiosConfig = process.env.IS_NODE === true
-//   ? { baseURL: process.env.NOW_URL || notEmpty(process.env.SERVER_URL) }
-//   : {};
-//
-// Then we will then have to initialise our redux-thunk middlware like so:
-//
-// thunk.withExtraArgument({
-//   axios: axios.create(axiosConfig),
-// })
+export const configureSSRStore = async (
+	res,
+	history,
+	initialState = {},
+) => {
+
+	const { store, thunk } = configureStore(history, initialState)
+	// store gives the reducer from state
+	let location = store.getState().location
+	if (doesRedirect(location, res)) return false // only do this again if ur thunks have redirects
+
+  // rehydrate all thunk data if any from routes.
+  await thunk(store)
+
+  // changed now based on the thunks.
+  location = store.getState().location
+
+  // if thunk state had a redirect then send off
+  if (doesRedirect(location, res)) return false
+
+
+  const status = location.type === NOT_FOUND ? 404 : 200
+  res.status(status)
+	return store
+}
+
+export const doesRedirect = ({ kind, pathname }, res) => {
+	if (kind === 'redirect') {
+		res.redirect(302, pathname)
+    return true
+	}
+}
 
 export default configureStore;

@@ -235,7 +235,6 @@ const config = {
           'react',
           'react-dom',
           'react-helmet',
-          'react-router',
         ],
         // The name of the vendor DLL.
         name: '__dev_vendor_dll__',

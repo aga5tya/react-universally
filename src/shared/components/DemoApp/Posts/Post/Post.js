@@ -38,7 +38,7 @@ function Post({ post } : Props) {
   );
 }
 
-function mapStateToProps(state, { params: { id } }) {
+function mapStateToProps(state, { id }) {
   return {
     post: FromState.getPostById(state, id),
   };
