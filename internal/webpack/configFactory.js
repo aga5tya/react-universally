@@ -45,9 +45,7 @@ export default function webpackConfigFactory(buildOptions) {
   const ifProdClient = ifElse(isProd && isClient);
 
   console.log(
-    `==> Creating ${isProd
-      ? 'an optimised'
-      : 'a development'} bundle configuration for the "${target}"`,
+    `==> Creating ${isProd ? 'an optimised' : 'a development'} bundle configuration for the "${target}"`,
   );
 
   const bundleConfig = isServer || isClient
@@ -74,13 +72,13 @@ export default function webpackConfigFactory(buildOptions) {
         // This should always be at the top of your entries list. Only put
         // polyfills above it.
         ifDevClient('react-hot-loader/patch'),
-        // Required to support hot reloading of our client.
-        ifDevClient(
-          () =>
-            `webpack-hot-middleware/client?reload=true&path=http://${config('host')}:${config(
-              'clientDevServerPort',
-            )}/__webpack_hmr`,
-        ),
+        // // Required to support hot reloading of our client.
+        // ifDevClient(
+        //   () =>
+        //     `webpack-hot-middleware/client?reload=true&path=http://${config('host')}:${config(
+        //       'clientDevServerPort',
+        //     )}/__webpack_hmr`,
+        // ),
         // The source entry file for the bundle.
         path.resolve(appRootDir.get(), bundleConfig.srcEntryFile),
       ]),
@@ -113,9 +111,7 @@ export default function webpackConfigFactory(buildOptions) {
       publicPath: ifDev(
         // As we run a seperate development server for our client and server
         // bundles we need to use an absolute http path for the public path.
-        `http://${config('host')}:${config('clientDevServerPort')}${config(
-          'bundles.client.webPath',
-        )}`,
+        `http://${config('host')}:${config('clientDevServerPort')}${config('bundles.client.webPath')}`,
         // Otherwise we expect our bundled client to be served from this path.
         bundleConfig.webPath,
       ),
@@ -286,7 +282,7 @@ export default function webpackConfigFactory(buildOptions) {
       ifDev(() => new webpack.NoEmitOnErrorsPlugin()),
 
       // We need this plugin to enable hot reloading of our client.
-      ifDevClient(() => new webpack.HotModuleReplacementPlugin()),
+      // ifDevClient(() => new webpack.HotModuleReplacementPlugin()),
 
       // For our production client we need to make sure we pass the required
       // configuration to ensure that the output is minimized/optimized.
@@ -492,9 +488,7 @@ export default function webpackConfigFactory(buildOptions) {
             publicPath: isDev
               ? // When running in dev mode the client bundle runs on a
                 // seperate port so we need to put an absolute path here.
-                `http://${config('host')}:${config('clientDevServerPort')}${config(
-                  'bundles.client.webPath',
-                )}`
+                `http://${config('host')}:${config('clientDevServerPort')}${config('bundles.client.webPath')}`
               : // Otherwise we just use the configured web path for the client.
                 config('bundles.client.webPath'),
             // We only emit files when building a web bundle, for the server

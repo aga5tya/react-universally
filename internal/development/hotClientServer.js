@@ -1,8 +1,5 @@
 import Koa from 'koa';
-import {
-  devMiddleware as createWebpackMiddleware,
-  hotMiddleware as createWebpackHotMiddleware,
-} from 'koa-webpack-middleware';
+import koaWebpack from 'koa-webpack';
 import ListenerManager from './listenerManager';
 import config from '../../config';
 import { log } from '../utils';
@@ -22,20 +19,27 @@ class HotClientServer {
     // eslint-disable-next-line no-unused-vars
     const [_, host, port] = httpPathRegex.exec(httpPath);
 
-    this.webpackDevMiddleware = createWebpackMiddleware(compiler, {
-      quiet: true,
-      noInfo: true,
-      headers: {
-        'Access-Control-Allow-Origin': `http://${config('host')}:${config('port')}`,
+    this.webpackKoaMiddleware = koaWebpack({
+      compiler,
+      hot: {
+        hot: true,
+        port: config('clientDevServerPort'),
       },
-      // Ensure that the public path is taken from the compiler webpack config
-      // as it will have been created as an absolute path to avoid conflicts
-      // with an node servers.
-      publicPath: compiler.options.output.publicPath,
+      dev: {
+        hot: true,
+        quiet: true,
+        noInfo: true,
+        headers: {
+          'Access-Control-Allow-Origin': `http://${config('host')}:${config('port')}`,
+        },
+        // Ensure that the public path is taken from the compiler webpack config
+        // as it will have been created as an absolute path to avoid conflicts
+        // with an node servers.
+        publicPath: compiler.options.output.publicPath,
+      },
     });
 
-    app.use(this.webpackDevMiddleware);
-    app.use(createWebpackHotMiddleware(compiler));
+    app.use(this.webpackKoaMiddleware);
 
     const listener = app.listen(port);
 
